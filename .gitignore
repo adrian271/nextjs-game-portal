@@ -58,3 +58,5 @@ next-env.d.ts
 !.vscode/extensions.json
 *.swp
 Thumbs.db
+
+/src/generated/prisma
