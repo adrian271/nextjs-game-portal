@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Gameplay Stats — Architecture Approaches</title>
+<style>
+  :root {
+    --bg: #0f1115;
+    --panel: #171a21;
+    --panel-2: #1e222b;
+    --ink: #e7ecf3;
+    --muted: #9aa6b5;
+    --line: #2c323d;
+    --client: #3b82f6;
+    --server: #8b5cf6;
+    --db: #10b981;
+    --history: #f59e0b;
+    --cache: #ef4444;
+    --read: #22d3ee;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 40px 24px;
+    background: var(--bg); color: var(--ink);
+    font: 15px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  h1 { font-size: 28px; margin: 0 0 4px; text-align: center; }
+  .sub { text-align: center; color: var(--muted); margin: 0 0 36px; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; max-width: 1280px; margin: 0 auto; }
+  @media (max-width: 980px) { .grid { grid-template-columns: 1fr; } }
+  .card {
+    background: var(--panel); border: 1px solid var(--line);
+    border-radius: 16px; padding: 22px;
+  }
+  .card h2 { margin: 0 0 2px; font-size: 19px; }
+  .tag { display: inline-block; font-size: 12px; color: var(--muted); margin-bottom: 18px; }
+  .tag.rec { color: #34d399; }
+  .tag.oura { color: #c4b5fd; }
+
+  .flow-label {
+    font-size: 11px; letter-spacing: .12em; text-transform: uppercase;
+    color: var(--muted); margin: 18px 0 10px;
+    border-bottom: 1px dashed var(--line); padding-bottom: 6px;
+  }
+  .node {
+    border-radius: 10px; padding: 10px 14px; margin: 0 auto;
+    background: var(--panel-2); border: 1px solid var(--line);
+    position: relative;
+  }
+  .node .t { font-weight: 600; font-size: 14px; }
+  .node .d { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .node.client { border-color: var(--client); box-shadow: inset 3px 0 0 var(--client); }
+  .node.server { border-color: var(--server); box-shadow: inset 3px 0 0 var(--server); }
+  .node.db { border-color: var(--db); box-shadow: inset 3px 0 0 var(--db); }
+  .node.history { border-color: var(--history); box-shadow: inset 3px 0 0 var(--history); }
+  .node.cache { border-color: var(--cache); box-shadow: inset 3px 0 0 var(--cache); border-style: dashed; }
+  .node.read { border-color: var(--read); box-shadow: inset 3px 0 0 var(--read); }
+
+  .arrow {
+    text-align: center; color: var(--muted); font-size: 12px;
+    padding: 7px 0; line-height: 1.2;
+  }
+  .arrow b { color: var(--ink); font-weight: 600; }
+  .arrow .glyph { display:block; font-size: 18px; color: var(--line); }
+
+  .split { display: flex; gap: 12px; }
+  .split .node { flex: 1; }
+
+  .txn {
+    border: 1px dashed var(--server); border-radius: 12px;
+    padding: 12px; margin-top: 2px;
+    background: rgba(139,92,246,0.06);
+  }
+  .txn .cap { font-size: 11px; color: var(--server); letter-spacing: .06em; margin-bottom: 10px; font-weight: 600; }
+
+  code { background: #0b0d11; border: 1px solid var(--line); border-radius: 6px; padding: 1px 6px; font-size: 12px; color: #cbd5e1; }
+
+  .map { margin-top: 18px; border-top: 1px solid var(--line); padding-top: 14px; }
+  .map h3 { font-size: 13px; margin: 0 0 8px; color: var(--muted); letter-spacing: .04em; text-transform: uppercase; }
+  .map table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  .map td { padding: 5px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  .map td:first-child { color: var(--ink); white-space: nowrap; }
+  .map td:last-child { color: var(--muted); }
+
+  .legend { max-width: 1280px; margin: 28px auto 0; display: flex; flex-wrap: wrap; gap: 16px; justify-content: center; color: var(--muted); font-size: 12.5px; }
+  .legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .dot { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
+  .pros { margin-top: 14px; font-size: 12.5px; }
+  .pros div { margin: 3px 0; }
+  .pros .p { color: #34d399; }
+  .pros .c { color: #fca5a5; }
+</style>
+</head>
+<body>
+  <h1>Gameplay Stats — Two Architectures</h1>
+  <p class="sub">Tracking RPS win/loss/draw and Tic-Tac-Toe X/O wins, per user account</p>
+
+  <div class="grid">
+
+    <!-- ============ APPROACH A ============ -->
+    <div class="card">
+      <h2>Approach A · Simple</h2>
+      <span class="tag rec">Counter columns + Server Actions — fewest moving parts</span>
+
+      <div class="flow-label">Write path — recording a result</div>
+      <div class="node client"><div class="t">🎮 Game (Client Component)</div><div class="d">Round ends → calls a function directly</div></div>
+      <div class="arrow"><span class="glyph">↓</span> calls <b>recordResult(outcome)</b></div>
+      <div class="node server"><div class="t">⚙️ Server Action <code>'use server'</code></div><div class="d">Identity from <b>auth()</b> — client can't spoof user</div></div>
+      <div class="arrow"><span class="glyph">↓</span> <b>upsert</b> + atomic <b>increment</b></div>
+      <div class="node db"><div class="t">🗄️ GameStats row (Postgres)</div><div class="d">rpsWins / rpsLosses / rpsDraws / tttXWins / tttOWins</div></div>
+
+      <div class="flow-label">Read path — showing totals</div>
+      <div class="node read"><div class="t">📄 Game page (Server Component)</div></div>
+      <div class="arrow"><span class="glyph">↓</span> <b>findUnique</b> (one tiny query)</div>
+      <div class="node db"><div class="t">🗄️ GameStats row</div><div class="d">The totals <i>are</i> the row — nothing to compute</div></div>
+
+      <div class="pros">
+        <div class="p">＋ Minimal code, one round-trip, trivial to verify in Supabase</div>
+        <div class="p">＋ Teaches upsert + race-safe atomic increment</div>
+        <div class="c">－ No history (only current totals); new stat = new column + migration</div>
+      </div>
+    </div>
+
+    <!-- ============ APPROACH B ============ -->
+    <div class="card">
+      <h2>Approach B · Ōura-shaped Hybrid</h2>
+      <span class="tag oura">Event log + precomputed counter read-model, behind a service endpoint</span>
+
+      <div class="flow-label">Write path — recording a result</div>
+      <div class="node client"><div class="t">🎮 Game (Client Component)</div><div class="d">Round ends → <code>fetch</code> POST</div></div>
+      <div class="arrow"><span class="glyph">↓</span> <b>POST /api/stats</b> (HTTP service boundary)</div>
+      <div class="node server"><div class="t">⚙️ API Route (service)</div><div class="d"><b>auth()</b> + validate body (Zod)</div></div>
+      <div class="arrow"><span class="glyph">↓</span> one <b>Prisma $transaction</b></div>
+      <div class="txn">
+        <div class="cap">ATOMIC — both succeed or neither</div>
+        <div class="split">
+          <div class="node history"><div class="t">📜 GameResult</div><div class="d">append-only event<br/>(game, outcome, time) — history</div></div>
+          <div class="node db"><div class="t">🗄️ GameStats</div><div class="d">counter read-model<br/>incremented on write</div></div>
+        </div>
+      </div>
+
+      <div class="flow-label">Read path — showing totals</div>
+      <div class="node read"><div class="t">📄 Game page</div></div>
+      <div class="arrow"><span class="glyph">↓</span> read precomputed counters (fast)</div>
+      <div class="node db"><div class="t">🗄️ GameStats (read-model)</div></div>
+      <div class="arrow"><span class="glyph">⤷</span> at scale, cache here</div>
+      <div class="node cache"><div class="t">⚡ Redis (cache) — not built, just where it'd go</div></div>
+
+      <div class="pros">
+        <div class="p">＋ Full history (streaks, "last 10", leaderboards) for free</div>
+        <div class="p">＋ Precompute-on-write discipline — the core NoSQL/event lesson</div>
+        <div class="c">－ More code: transaction, event table + index, explicit endpoint</div>
+      </div>
+
+      <div class="map">
+        <h3>How this maps to the Ōura stack (from the posting)</h3>
+        <table>
+          <tr><td>API Route</td><td>≈ API Gateway → AWS Lambda (Service-Oriented Architecture)</td></tr>
+          <tr><td>GameResult log</td><td>≈ DynamoDB item appends + Streams (event-driven)</td></tr>
+          <tr><td>GameStats counters</td><td>≈ precomputed aggregate (DynamoDB has no GROUP BY → totals maintained on write)</td></tr>
+          <tr><td>Redis cache</td><td>= Redis (atomic INCR / sorted-set leaderboards)</td></tr>
+          <tr><td>$transaction</td><td>≈ stream-maintained consistency between event + aggregate</td></tr>
+        </table>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="legend">
+    <span><i class="dot" style="background:var(--client)"></i> Client / browser</span>
+    <span><i class="dot" style="background:var(--server)"></i> Server logic (auth)</span>
+    <span><i class="dot" style="background:var(--db)"></i> Counter read-model</span>
+    <span><i class="dot" style="background:var(--history)"></i> Append-only event log</span>
+    <span><i class="dot" style="background:var(--read)"></i> Read path</span>
+    <span><i class="dot" style="background:var(--cache)"></i> Cache (not built)</span>
+  </div>
+</body>
+</html>

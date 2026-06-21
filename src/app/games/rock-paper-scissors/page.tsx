@@ -75,7 +75,8 @@ export default function RockPaperScissors() {
       )}
 
       <p className="text-sm text-zinc-500">
-        Wins: {score.win} · Losses: {score.lose} · Draws: {score.draw}
+        Wins: {score.win} · Losses: {score.lose} · Draws: {score.draw} · Total:{" "}
+        {score.win + score.lose + score.draw}
       </p>
     </div>
   );
