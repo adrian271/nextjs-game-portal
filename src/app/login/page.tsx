@@ -1,3 +1,5 @@
+"use client";
+
 import { useState } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
@@ -34,7 +36,6 @@ export default function LoginPage() {
   return (
     <main className="mx-auto flex min-h-screen max-w-sm flex-col justify-center gap-6 p-8">
       <h1 className="text-2xl font-bold">Log in</h1>
-      41
       <form onSubmit={onSubmit} className="flex flex-col gap-4">
         <input
           name="email"

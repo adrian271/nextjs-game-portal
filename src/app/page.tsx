@@ -26,12 +26,22 @@ ity hover:opacity-90"
           </Link>
         </div>
       ) : (
-        <Link
-          href="/auth/signin"
-          className="rounded-full bg-foreground px-6 py-3 font-medium text-background transition-opacity hover:opacity-90"
-        >
-          Sign in →{" "}
-        </Link>
+        <div className="flex gap-3">
+          <Link
+            href="/signup"
+            className="rounded-full bg-foreground px-6 py-3 font-medium text-background transition-opacity
+  hover:opacity-90"
+          >
+            Sign up
+          </Link>
+          <Link
+            href="/login"
+            className="rounded-full border border-black/15 px-6 py-3 font-medium transition-colors
+  hover:bg-black/5 dark:border-white/20 dark:hover:bg-white/10"
+          >
+            Log in
+          </Link>
+        </div>
       )}
     </main>
   );
