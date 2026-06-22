@@ -21,4 +21,29 @@ model User {
   passwordHash  String
   name          String?
   createdAt     DateTime  @default(now())
+
+  results       GameResult[]
+  stats         GameStats?
+}
+
+model GameResult {
+  id            String    @id @default(cuid())
+  userId        String    
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  game          String
+  outcome       String
+  createdAt     DateTime  @default(now())
+
+  @@index([userId, game])
+}
+
+model GameStats {
+  userId        String    @id
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  rpsWins       Int       @default(0)
+  rpsLosses     Int       @default(0)
+  rpsDraws      Int       @default(0)
+  tttXWins      Int       @default(0)
+  tttOWins      Int       @default(0)
+  updatedAt     DateTime  @updatedAt 
 }
